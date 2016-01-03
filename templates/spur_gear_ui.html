@@ -1,0 +1,391 @@
+<html>
+<head>
+<style type="text/css">
+table { border: 0px; border-spacing: 2px; border-collapse: collapse; }
+td { border: 0px; padding: 2px; font-size: 12px; font-family: helvetica; }
+.rTable {   		display: table;} 
+.rTableRow {   		display: table-row; } 
+.rTableHeading {   	display: table-header-group; background-color: #f00; } 
+.rTableCell {   	display: table-cell;   	padding: 3px 10px;   	border: 0px solid #999999; font-size:12pt; font-family: helvetica; color:#000; background-color: #aaa;} 
+.rTableHead {   	display: table-cell;   	padding: 3px 10px;   	border: 0px solid #999999; font-size:12pt; font-family: helvetica; font-weight: bold; color:#000; background-color: #aaa } 
+.rTableHeading {   	display: table-header-group;   	background-color: #ddd;   font-color: #000; font-weight: bold; } 
+.rTableFoot {   	display: table-footer-group;   	font-weight: bold;   	background-color: #aaa; } 
+.rTableBody {   	display: table-row-group; }
+.ni { padding: 0px; width: 50px; height: 20px; font-size: 12px; color: #f00;}
+a.dl:link { color:#00F; text-decoration:none; font-weight:normal; }
+a.dl:visited { color: #00F; text-decoration:none; font-weight:normal; }
+a.dl:hover { color: #00F; text-decoration:underline; font-weight:normal; }
+a.dl:active { color: #00F; text-decoration:none; font-weight:normal; }
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>
+
+	{% include 'graphics.js' %}
+	
+	{% include 'gears.js' %}
+
+	var saved_file = null;
+	var saved_file_name = null;
+	function save_file( name, data ){
+		var data = new Blob([data],{type:'text/plain'});
+		if( saved_file ){
+			window.URL.revokeObjectURL(saved_file);
+		}
+		saved_file = window.URL.createObjectURL(data);
+		saved_file_name = name;
+		return saved_file;
+	}
+
+	jQuery(document).ready(function( $ ) {
+
+
+	function update_gear(){
+
+		$("#download_link").hide();
+		$("#export").show();
+
+		var pa = $("#pressure_angle").val()*Math.PI/180.0;
+		var m  = $("#module").val();
+		var N  = $("#num_teeth").val();
+
+		var gear = gears.generate( m, pa, N );
+
+    	var Rp = gears.pitch_diameter(m,pa,N)/2.0;
+    	var Ra = Rp + gears.addendum(m,pa,N);
+    	var Rd = Rp - gears.dedendum(m,pa,N);
+		var Rb = gears.base_diameter(m,pa,N)/2.0;
+		var t  = gears.tooth_thickness(m,pa,N);
+
+		$("#pitch_diameter").val( gears.pitch_diameter(m,pa,N) );
+		$("#base_diameter").val( gears.pitch_diameter(m,pa,N)-2.0*gears.dedendum(m,pa,N) );
+		$("#outer_diameter").val( gears.pitch_diameter(m,pa,N)+2.0*gears.addendum(m,pa,N) );
+		$("#addendum").val( gears.addendum(m,pa,N) );
+		$("#dedendum").val( gears.dedendum(m,pa,N) );
+		$("#tooth_thickness").val( Math.floor(gears.tooth_thickness(m,pa,N)*1000)/1000 );
+
+		// start drawing the gear
+    	var ctx = graphics.init( document.getElementById("involute_id"), [-1.1*Ra,1.1*Ra,-1.1*Ra,1.1*Ra] );
+
+    	var ui_width = document.getElementById("gear_generator_controls").offsetWidth-40;
+
+    	graphics.resize( ctx, ui_width, ui_width );
+    	graphics.clear( ctx );
+
+    	// draw the gear
+    	graphics.color( ctx, 128, 128, 128 );
+    	graphics.polyline( ctx, gear, true );
+
+    	// draw the pitch circle as well as some crosshairs
+    	graphics.color( ctx, 0, 0, 0 );
+    	graphics.line( ctx, [-0.1*Rp,0], [0.1*Rp,0] );
+    	graphics.line( ctx, [0,-0.1*Rp], [0,0.1*Rp] );
+
+    	if( $("#show_base_circle").prop('checked') ){
+	    	graphics.color( ctx, 255, 0, 0 );
+    		graphics.circle( ctx, [0,0], Rb );
+    	}
+
+    	if( $("#show_dedendum_circle").prop('checked') ){
+    		graphics.color( ctx, 0, 255, 0 );
+    		graphics.circle( ctx, [0,0], Rd );
+    	}
+
+    	if( $("#show_addendum_circle").prop('checked') ){
+    		graphics.color( ctx, 0, 0, 255 );
+    		graphics.circle( ctx, [0,0], Ra );
+    	}
+
+    	if( $("#show_pitch_circle").prop('checked') ){
+    		graphics.color( ctx, 0, 0, 0 );
+    		graphics.circle( ctx, [0,0], Rp );
+    	}
+
+    	if( $("#show_tooth_sector").prop('checked') ){
+    		var pA = graphics.rotate_point( [0,0], [Ra,0], +0.5*2.0*Math.PI/N );
+    		var pB = graphics.rotate_point( [0,0], [Ra,0], -0.5*2.0*Math.PI/N );
+    		graphics.color( ctx, 0, 0, 0 );
+    		graphics.line( ctx, [0,0], pA );
+    		graphics.line( ctx, [0,0], pB );
+    	}
+	}
+
+    $("#pressure_angle").change(function(){
+    	update_gear();
+    });
+
+    $("#module").change(function(){
+    	update_gear();
+    });
+
+    $("#num_teeth").change(function(){
+    	update_gear();
+    });
+
+    $("#show_pitch_circle").change(function(){
+    	update_gear();
+    });
+
+    $("#show_base_circle").change(function(){
+    	update_gear();
+    });
+
+    $("#show_addendum_circle").change(function(){
+    	update_gear();
+    });
+
+    $("#show_dedendum_circle").change(function(){
+    	update_gear();
+    });
+
+    $("#show_tooth_sector").change(function(){
+    	update_gear();
+    });
+
+    $("#format").change(function(){
+    	update_gear();
+    });
+
+    $("#export").click(function(){
+    	// get the gear parameters
+		var pa = $("#pressure_angle").val()*Math.PI/180.0;
+		var m  = $("#module").val();
+		var N  = $("#num_teeth").val();
+		var fmt = $("#format").val();
+		var Ro = gears.pitch_diameter( m, pa, N )/2.0 + 2.0*gears.addendum( m, pa, N );
+		
+		// create the gear
+		var gear = gears.generate( m, pa, N );
+
+		// create the output
+		var str = "";
+		var filename = "spur_gear_mod" + m + "_pa" + Math.round(pa*180.0/Math.PI) + "_N" + N;
+		if( fmt == "csv" ){
+			filename = filename + ".csv";
+			for( var i=0; i<gear.length; i++ ){
+				str = str + gear[i][0] + ", " + gear[i][1] + "\n";
+			}
+		} else if( fmt == "svg" ){
+			filename = filename + ".svg";
+			str = str + '<?xml version="1.0" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n';
+			str = str + '<svg width="' + 10*(2*Ro) + 'mm" height="' + 10*(2*Ro) + 'mm" viewbox="' + 0 + ' ' + 0 + ' ' + (2*Ro) + ' ' + (2*Ro) + '" version="1.1" xmlns="http://www.w3.org/2000/svg"><polyline points="';
+			for( var i=0; i<gear.length; i++ ){
+				str = str + (gear[i][0]+Ro) + ',' + (gear[i][1]+Ro) + ' ';
+			}
+			str = str + '\"/></svg>';
+		} else if( fmt == "dxf" ){
+			filename = filename + ".dxf";
+			str = 	"999\n" +
+					"VISION3D DXF\n" +
+					"0\n" +
+					"SECTION\n" +
+					"2\n" +
+					"HEADER\n" +
+					"9\n" +
+					"$ACADVER\n" +
+					"1\n" +
+					"AC1006\n" +
+					"9\n" +
+					"$INSBASE\n" +
+					"10\n" +
+					"0.0\n" +
+					"20\n" +
+					"0.0\n" +
+					"30\n" +
+					"0.0\n" +
+					"9\n" +
+					"$EXTMIN\n" +
+					"10\n" +
+					(-Ro) + "\n" +
+					"20\n" +
+					(-Ro) + "\n" +
+					"9\n" +
+					"$EXTMAX\n" +
+					"10\n" +
+					(Ro) + "\n" +
+					"20\n" +
+					(Ro) + "\n" +
+					"9\n" +
+					"$LINMIN\n" +
+					"10\n" +
+					"0.0\n" +
+					"20\n" +
+					"0.0\n" +
+					"9\n" +
+					"$LINMAX\n" +
+					"10\n" +
+					"1000.0\n" +
+					"20\n" +
+					"1000.0\n" +
+					"0\n" +
+					"ENDSEC\n" + 
+
+					"0\n" + 
+					"SECTION\n" + 
+					"2\n" + 
+					"TABLES\n" + 
+					"0\n" + 
+					"TABLE\n" + 
+					"2\n" + 
+					"LTYPE\n" + 
+					"70\n" + 
+					"1\n" + 
+					"0\n" + 
+					"LTYPE\n" + 
+					"2\n" + 
+					"CONTINUOUS\n" + 
+					"70\n" + 
+					"64\n" + 
+					"3\n" + 
+					"Solid line\n" + 
+					"72\n" + 
+					"65\n" + 
+					"73\n" + 
+					"0\n" + 
+					"40\n" + 
+					"0.000000\n" + 
+					"0\n" + 
+					"ENDTAB\n" + 
+					"0\n" + 
+					"TABLE\n" + 
+					"2\n" + 
+					"LAYER\n" + 
+					"70\n" + 
+					"6\n" + 
+					"0\n" + 
+					"LAYER\n" + 
+					"2\n" + 
+					"1\n" + 
+					"70\n" + 
+					"64\n" + 
+					"62\n" + 
+					"7\n" + 
+					"6\n" + 
+					"CONTINUOUS\n" + 
+					"0\n" + 
+					"ENDTAB\n" + 
+					"0\n" + 
+					"TABLE\n" + 
+					"2\n" + 
+					"STYLE\n" + 
+					"70\n" + 
+					"0\n" + 
+					"0\n" + 
+					"ENDTAB\n" + 
+					"0\n" + 
+					"ENDSEC\n" + 
+					"0\n" + 
+					"SECTION\n" + 
+					"2\n" + 
+					"BLOCKS\n" + 
+					"0\n" + 
+					"ENDSEC\n" +
+
+					"0\n" + 
+					"SECTION\n" +
+					"2\n" +
+					"ENTITIES\n";
+
+		    for( var i=0; i<gear.length; i++ ){
+		        str = str + '0\n';
+		        str = str + 'LINE\n';
+		        str = str + '8\n';
+		        str = str + '1\n';
+		        str = str + '62\n';
+		        str = str + '1\n';
+		        str = str + '10\n';
+		        str = str + gear[i][0] + '\n';
+		        str = str + '20\n';
+		        str = str + gear[i][1] + '\n';
+		        str = str + '30\n';
+		        str = str + '0.0\n';
+		        str = str + '11\n';
+		        str = str + gear[(i+1)%gear.length][0] + '\n';
+		        str = str + '21\n';
+		        str = str + gear[(i+1)%gear.length][1] + '\n'; 
+		        str = str + '31\n';
+		        str = str + '0.0\n';
+		    }
+		    str = str + '0\n';
+		    str = str + 'ENDSEC\n';
+		    str = str + '0\n';
+		    str = str + 'EOF\n';
+		    
+		}
+
+		//$("#download_link").style.display = 'block';
+		$("#export").hide();
+		$("#download_link").attr( 'href', save_file(filename, str ) ).attr('download', filename );
+		$("#download_link").show();
+    });
+
+
+   	update_gear();
+
+});
+</script>
+</head>
+<body>
+	<div class="rTable" id="gear_generator">
+		<!-- header -->	
+		<div class="rTableHeading">
+			<div class="rTableHead">
+				Metric Spur Gear Generator
+			</div>
+		</div>
+		<!-- canvas -->
+		<div class="rTableRow">
+			<div class="rTableCell" style="background-color: #fff;">
+				<center>
+				<div><canvas id="involute_id"></canvas></div>
+				</center>
+			</div>
+		</div>
+
+		<!-- controls -->
+		<div class="rTableRow">
+
+			<div id="gear_generator_controls" class="rTable">
+				<div class="rTableHeading">
+					<div class="rTableHead">Input Parameters</div>
+					<div class="rTableHead">Geometry</div>
+					<div class="rTableHead">Display</div>
+				</div>
+				<div class="rTableRow">
+					<div class="rTableCell">
+						<!-- adjustable parameters -->
+						<table class="inner_table">
+						<tr><td>Module</td><td><input id="module" type="number" min="0.01" max="10.0" value="1.0" style="padding: 0px; width: 50px; font-size: 12px; color: #000"></td></tr>
+						<tr><td>Num. Teeth</td><td><input id="num_teeth" type="number" size="10" min="4" max="200" step="1" value="12" style="padding: 0px; width: 50px; font-size: 12px; color: #000"></td></tr>
+						<tr><td>Pressure Angle</td><td><input id="pressure_angle" type="number" min="1" max="60" value="20" style="padding: 0px; width: 50px; font-size: 12px; color: #000">deg.</td></tr>
+						<tr><td align="right"><select id="format"><option selected="true">csv</option><option>svg</option><option>dxf</option></select></td><td><input type="button" id="export" value="Export" style="padding: 10px; width: 80px; font-size: 12px; color: #000"><a id="download_link" download="gear" class="dl">Download</a></td></tr>
+						</table>
+					</div>
+					<div class="rTableCell">
+						<!-- computed geometry -->
+						<table class="inner_table">
+						<tr><td>Pitch Diameter</td><td><input id="pitch_diameter" type="number" disabled="disabled" style="padding: 0px; width: 50px; font-size: 12px; color: #000">mm</td></tr>
+						<tr><td>Base Diameter</td><td><input id="base_diameter" type="number" disabled="disabled" style="padding: 0px; width: 50px; font-size: 12px; color: #000">mm</td></tr>
+						<tr><td>Outer Diameter</td><td><input id="outer_diameter" type="number" disabled="disabled" style="padding: 0px; width: 50px; font-size: 12px; color: #000">mm</td></tr>
+						<tr><td>Addendum (nom)</td><td><input id="addendum" type="number" disabled="disabled" style="padding: 0px; width: 50px; font-size: 12px; color: #000">mm</td></tr>
+						<tr><td>Dedendum (nom)</td><td><input id="dedendum" type="number" disabled="disabled" style="padding: 0px; width: 50px; font-size: 12px; color: #000">mm</td></tr>
+						<tr><td>Tooth Thickness</td><td><input id="tooth_thickness" type="number" disabled="disabled" style="padding: 0px; width: 50px; font-size: 12px; color: #000">mm</td></tr>
+						</table>
+
+					</div>
+					<div class="rTableCell">
+						<!-- Display options -->
+						<table class="inner_table">
+						<tr><td>Pitch Circle</td><td><input id="show_pitch_circle" type="checkbox" value="1"></td></tr>
+						<tr><td>Base Circle</td><td><input id="show_base_circle" type="checkbox" value="1"></td></tr>
+						<tr><td>Dedendum</td><td><input id="show_dedendum_circle" type="checkbox" value="1"></td></tr>
+						<tr><td>Addendum</td><td><input id="show_addendum_circle" type="checkbox" value="1"></td></tr>
+						<tr><td>Tooth Sector</td><td><input id="show_tooth_sector" type="checkbox" value="1"></td></tr>
+						</table>
+
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
